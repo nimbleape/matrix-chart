@@ -4,15 +4,15 @@ matrix:
   # This is not necessarily the host name where the service is reachable. In fact, you may want to omit any subdomains
   # from this value as the server name set here will be the name of your homeserver in the fediverse, and will be the
   # domain name at the end of every user's username
-  serverName: "example.com"
+  serverName: "nimblea.pe"
 
   # Enable anonymous telemetry to matrix.org
-  telemetry: false
+  telemetry: true
 
   # URL where Synapse can be reached.
   # This is *optional* if an Ingress is configured below. If baseUrl is unspecified, the Synapse hostname of the
   # Ingress will be used
-  # baseUrl: "matrix.example.com"
+  baseUrl: "https://matrix.nimblea.pe/"
 
   # Set to false to disable presence (online/offline indicators)
   presence: true
@@ -24,7 +24,7 @@ matrix:
   search: true
 
   # Email address of the administrator
-  adminEmail: "admin@example.com"
+  adminEmail: "contact@nimblea.pe"
 
   # Settings related to image and multimedia uploads
   uploads:
@@ -61,7 +61,7 @@ matrix:
   # User registration settings
   registration:
     # Allow new users to register an account
-    enabled: false
+    enabled: true
 
     # Allow users to join rooms as a guest
     allowGuests: false
@@ -80,7 +80,7 @@ matrix:
     # Enable URL previews.
     # WARNING: Make sure to review the default rules below to ensure that users cannot crawl
     # sensitive internal endpoints in your cluster.
-    enabled: false
+    enabled: true
 
     # Blacklists and whitelists for the URL preview crawler
     rules:
@@ -130,10 +130,15 @@ volumes:
     capacity: 10Gi
     # Storage class (optional)
     storageClass: ""
+  bridges:
+    # Capacity of the media persistent volume claim
+    capacity: 1Gi
+    # Storage class (optional)
+    storageClass: ""
   signingKey:
     # Capacity of the signing key PVC
     # Note: 1Mi is more than enough, but some cloud providers set a minimum PVC size of 1Mi or 1Gi, adjust as necessary
-    capacity: 1Mi
+    capacity: 1Gi
     # Storage class (optional)
     storageClass: ""
 
@@ -145,6 +150,15 @@ postgresql:
   username: matrix
   password: matrix
   database: matrix
+
+  initdbScripts:
+    matrix-irc.sql: |
+      CREATE DATABASE matrix_irc
+       ENCODING 'UTF8'
+       LC_COLLATE='C'
+       LC_CTYPE='C'
+       template=template0
+       OWNER matrix;
 
   # Set this if postgresql.enabled = false
   hostname: ""
@@ -186,7 +200,7 @@ riot:
   # Organization/enterprise branding
   branding:
     # Shown in email notifications
-    brand: "Riot"
+    brand: "Nimble Ape Riot"
     # Background of login splash screen
     welcomeBackgroundUrl: ""
     # Logo shown at top of login screen
@@ -267,7 +281,7 @@ coturn:
     tag: "4.5.1.1"
     pullPolicy: IfNotPresent
   service:
-    type: NodePort
+    type: ClusterIP
   replicaCount: 1
   resources: {}
 
@@ -277,7 +291,7 @@ mail:
   # NOTE: If enabled, either enable the Exim relay or configure an external mail server below
   enabled: true
   # Name and email address for outgoing mail
-  from: "Matrix <matrix@example.com>"
+  from: "Nimble Ape Matrix <matrix@nimblea.pe>"
   # Optional: Riot instance URL.
   # If the ingress is enabled, this is unnecessary.
   # If the ingress is disabled and this is left unspecified, emails will contain a link to https://riot.im
@@ -285,7 +299,7 @@ mail:
 
   # Exim relay
   relay:
-    enabled: true
+    enabled: false
     image:
       repository: "devture/exim-relay"
       tag: "4.92.2-r0-0"
@@ -299,9 +313,9 @@ mail:
   # External mail server
   external:
     host: ""
-    port: 25  # SSL: 465, STARTTLS: 587
-    username: ""
-    password: ""
+    port: 587  # SSL: 465, STARTTLS: 587
+    username: ''
+    password: ''
     requireTransportSecurity: true
 
 bridges:
@@ -391,6 +405,27 @@ bridges:
       type: ClusterIP
       port: 29318
 
+  irc:
+    # Set to true to enable the IRC bridge
+    enabled: false
+
+    # Set to false to disable online/offline presence for Discord users
+    presence: true
+
+    data:
+      # Size of the PVC to allocate
+      capacity: 1Gi
+
+    image:
+      repository: "matrixdotorg/matrix-appservice-irc"
+      tag: "latest"
+      pullPolicy: Always
+    replicaCount: 1
+    resources: {}
+    service:
+      type: ClusterIP
+      port: 9006
+
   discord:
     # Set to true to enable the Discord bridge
     enabled: false
@@ -466,8 +501,14 @@ networkPolicies:
 
 ingress:
   enabled: true
-  tls: []
+  tls:
+    - hosts:
+      - matrix.nimblea.pe
+      - riot.nimblea.pe
+      secretName: matrix-tls-prod
   hosts:
-    synapse: matrix.chart-example.local
-    riot: riot.chart-example.local
-  annotations: {}
+    synapse: matrix.nimblea.pe
+    riot: riot.nimblea.pe
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-production"

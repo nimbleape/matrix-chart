@@ -1,4 +1,4 @@
-{{- if or .Values.bridges.whatsapp.enabled .Values.bridges.discord.enabled }}
+{{- if or .Values.bridges.irc.enabled .Values.bridges.whatsapp.enabled .Values.bridges.discord.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -6,9 +6,10 @@ metadata:
   labels:
 {{ include "matrix.labels" . | indent 4}}
 spec:
+  storageClassName: {{ .Values.volumes.bridges.storageClass }}
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 1Mi
+      storage: {{ .Values.volumes.bridges.capacity }}
 {{- end }}

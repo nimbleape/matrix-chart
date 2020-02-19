@@ -1,13 +1,13 @@
 {{- if .Values.coturn.enabled }}
 {{- $portRange := untilStep (int .Values.coturn.ports.from) (int (add1 .Values.coturn.ports.to)) 1 -}}
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: {{ include "matrix.fullname" . }}-coturn
   labels:
 {{ include "matrix.labels" . | indent 4 }}
 spec:
-  replicas: {{ .Values.coturn.replicaCount }}
+  # replicas: {{ .Values.coturn.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "matrix.name" . }}-coturn
@@ -28,6 +28,7 @@ spec:
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
+      hostNetwork: true
       containers:
         - name: "coturn"
           image: "{{ .Values.coturn.image.repository }}:{{ .Values.coturn.image.tag }}"
@@ -36,10 +37,12 @@ spec:
           ports:
             - name: turn-3478
               containerPort: 3478
+              hostPort: 3478
               protocol: UDP
           {{- range $portRange }}
             - name: turn-{{ . }}
               containerPort: {{ . }}
+              hostPort: {{ . }}
               protocol: UDP
           {{- end }}
           volumeMounts:
